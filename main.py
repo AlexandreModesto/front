@@ -6,14 +6,22 @@ from flask_cors import CORS, cross_origin
 app=Flask(__name__)
 CORS(app,support_credencials=True,resource=r'/*',allow_headers='*',origins='*')
 
-mydb=mysql.connector.connect(host='localhost',user='root',password='root',database='flask_db')
+mydb=mysql.connector.connect(host='127.0.0.1',user='root',password='3005461Mo.',auth_plugin='mysql_native_password')
 app.config['JSON_SORT_KEYS']=False
 app.config['SECRET_KEY'] = 'secret_key'
 mycursor = mydb.cursor(buffered=True)
+mycursor.execute('CREATE DATABASE IF NOT EXISTS flask_db')
+mycursor.execute('USE flask_db')
+mycursor.execute("""CREATE TABLE IF NOT EXISTS user (id int(11) NOT NULL auto_increment,
+    name VARCHAR(40),
+   PRIMARY KEY (id))""")
 
 @app.route('/new',methods=['GET','POST'])
 def new():
     pass
+@app.route('/',methods=['GET'])
+def main():
+    return render_template('teste.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
