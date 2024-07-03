@@ -1,7 +1,7 @@
 from datetime import timedelta
 import mysql.connector
 from mysql.connector import Error
-import os, requests
+import os, requests, bcrypt
 from flask import Flask,request,jsonify,render_template,redirect,session,url_for
 from flask_cors import CORS, cross_origin
 from flask_wtf.csrf import CSRFProtect, CSRFError, generate_csrf
@@ -21,10 +21,9 @@ def start_connection():
             mycursor = mydb.cursor(buffered=True)
             # mycursor.execute('CREATE DATABASE IF NOT EXISTS flask_db')
             mycursor.execute('USE flask_db')
-            # mycursor.execute("""CREATE TABLE IF NOT EXISTS users (id int(11) NOT NULL auto_increment,
-            #     username VARCHAR(40),password VARCHAR(40),player_id BIGINT,
-            #    PRIMARY KEY (id))""")
-            # mycursor.execute("ALTER TABLE users ADD FOREIGN KEY(player_id) REFERENCES player(id)")
+            mycursor.execute("""CREATE TABLE IF NOT EXISTS users (id int(11) NOT NULL auto_increment,
+                username VARCHAR(40),password VARCHAR(60),
+               PRIMARY KEY (id))""")
             return mydb,mycursor
     except Error as e:
         print(e)
@@ -41,15 +40,24 @@ def new():
     form=SignInForm()
     if form.validate_on_submit():
         username= form.username.data
-        password=form.password.data
+        password1=form.password1.data
+        password2=form.password2.data
 
-        mydb,mycursor=start_connection()
+        if password1 == password2:
+            salt = bcrypt.gensalt()
+            hashed_password = bcrypt.hashpw(password1.encode('utf-8'), salt)
 
-        mycursor.execute("INSERT INTO users (username,password) VALUES (%s,%s)",(username,password))
-        mydb.commit()
-        msg=f"Usuário {username} criado com sucesso"
-        return render_template("new.html",msg=msg,form=form)
-    return render_template("new.html",form=form)
+            mydb,mycursor=start_connection()
+
+            mycursor.execute("INSERT INTO users (username,password) VALUES (%s,%s)",(username,hashed_password.decode('utf-8')))
+            mydb.commit()
+            mycursor.close()
+            mydb.close()
+            msg=f"Usuário {username} criado com sucesso"
+            return render_template("new.html",msg=msg,form=form)
+        else:
+            msg = "Senhas não são iguais"
+    return render_template("new.html",msg=msg,form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -62,23 +70,26 @@ def login():
         password = form.password.data
         # Check if account exists using MySQL
         mydb, mycursor = start_connection()
-        mycursor.execute('SELECT * FROM users WHERE username = %s AND password = %s', (username, password,))
+        mycursor.execute('SELECT * FROM users WHERE username = %s', (username,))
         # Fetch one record and return result
         account = mycursor.fetchone()
+        mycursor.close()
+        mydb.close()
         # If account exists in accounts table in out database
         if account:
             # Create session data, we can access this data in other routes
-            session['logged_in'] = True
-            session['id'] = account[0]
-            session['username'] = account[1]
-            session.permanent=True
-            app.permanent_session_lifetime=timedelta(minutes=30)
-            # Redirect to some page
-            return redirect(url_for('main'))# ID logado é dos gestores
-
+            if bcrypt.checkpw(password.encode('utf-8'),account[2].encode('utf-8')):
+                session['logged_in'] = True
+                session['id'] = account[0]
+                session['username'] = account[1]
+                session.permanent=True
+                app.permanent_session_lifetime=timedelta(minutes=30)
+                # Redirect to some page
+                return redirect(url_for('main'))# ID logado é dos gestores
+            else:msg='senha inválida'
         else:
             # Account doesnt exist or username/password incorrect
-            msg = 'Nome de Usuário/senha incorreto!'
+            msg = 'Nome de Usuário não encontrado!'
     # Show the login form with message (if any)
     return render_template('login.html', msg=msg,form=form)
 
@@ -92,7 +103,7 @@ def logout():
    return redirect(url_for('login'))
 
 #########################################################################################################
-####################                USER SESSION ABOVE                  #################################
+####################                LOGIN SESSION ABOVE                  ################################
 #########################################################################################################
 
 @app.route('/',methods=['GET'])
@@ -115,8 +126,44 @@ def new_player():
                 mydb, mycursor = start_connection()
                 mycursor.execute("UPDATE users SET player_id =  %s WHERE id = %s",(response_data,session['id']))
                 mydb.commit()
+                mycursor.close()
+                mydb.close()
+                session['player_id'] = response_data
                 return redirect(url_for('main'))
         return render_template('new_player.html',form=form)
+    else:return redirect(url_for('login'))
+
+@app.route("/info/<int:id>",methods=['GET'])
+def player_info(id):
+    response = requests.get(f'http://localhost:8080/player/info/{id}')
+    if response.status_code == 200:
+        return render_template('info_player.html',data=response.json())
+    else:
+        return render_template('info_player.html',msg='Player não encontrado')
+
+#########################################################################################################
+####################                USER PLAYER SESSION ABOVE                  ##########################
+#########################################################################################################
+
+@app.route("/city/start",methods=['GET',"POST"])
+def start_city():
+    if 'logged_in' in session:
+        form=StartCityForm()
+        msg=''
+        if form.validate_on_submit():
+            cityName=form.cityName.data
+
+            data={
+                "cityName":cityName,
+                "player_id":session['player_id']
+            }
+            response=requests.post("http://localhost:8080/city/create/",json=data)
+            print(response.status_code)
+            if response.status_code == 200:
+                return redirect(url_for('main'))
+            else:
+                msg='Nomde de cidade indisponível'
+        return render_template("create_city.html",msg=msg,form=form)
     else:return redirect(url_for('login'))
 
 

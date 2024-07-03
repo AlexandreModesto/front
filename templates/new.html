@@ -10,13 +10,19 @@
 			<form action="{{ url_for('new') }}" method="post">
 				{{ form.csrf_token }}
 				<label for="username" style="margin-top:20px;border-radius:5px">
-					<i class="fas fa-user"></i>
+					<i class="fas fa-user">{{form.username.label}}</i>
 				</label>
 				<input type="text" name="username" placeholder="Nome de Usuário" id="username" required>
-				<label for="password" style="margin-top:20px;border-radius:5px">
-					<i class="fas fa-lock"></i>
+
+				<label for="password1" style="margin-top:20px;border-radius:5px">
+					<i class="fas fa-lock">{{form.password1.label}}</i>
 				</label>
-				<input type="password" name="password" placeholder="Senha" id="password" required>
+				<input type="password" name="password1" placeholder="Senha" id="password1" required>
+
+				<label for="password2" style="margin-top:20px;border-radius:5px">
+					<i class="fas fa-lock">{{form.password2.label}}</i>
+				</label>
+				<input type="password" name="password2" placeholder="Confirme" id="password2" required>
 				<div class="msg">{{ msg }}</div>
 				<input type="submit" value="Entrar">
 			</form>

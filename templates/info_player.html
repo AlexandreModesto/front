@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Info</title>
+</head>
+<body>
+    {% if data %}
+    <p>Nome de jogador: {{data.playerName}}</p>
+    <p>Nível: {{data.playerLevel}}</p>
+    {% endif %}
+    <p>{{msg}}</p>
+</body>
+</html>
