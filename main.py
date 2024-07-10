@@ -21,9 +21,10 @@ def start_connection():
             mycursor = mydb.cursor(buffered=True)
             # mycursor.execute('CREATE DATABASE IF NOT EXISTS flask_db')
             mycursor.execute('USE flask_db')
-            mycursor.execute("""CREATE TABLE IF NOT EXISTS users (id int(11) NOT NULL auto_increment,
-                username VARCHAR(40),password VARCHAR(60),
-               PRIMARY KEY (id))""")
+            # mycursor.execute("""CREATE TABLE IF NOT EXISTS users (id int(11) NOT NULL auto_increment,
+            #     username VARCHAR(40),password VARCHAR(60),player_id BIGINT,
+            #     slot_1 VARCHAR(40) DEFAULT("+"),slot_2 VARCHAR(40) DEFAULT("+"),slot_3 VARCHAR(40) DEFAULT("+"),
+            #    PRIMARY KEY (id))""")
             return mydb,mycursor
     except Error as e:
         print(e)
@@ -34,8 +35,8 @@ def start_connection():
 #########################################################################################################
 
 
-@app.route('/new',methods=['GET','POST'])
-def new():
+@app.route('/signin',methods=['GET','POST'])
+def signIn():
     msg=''
     form=SignInForm()
     if form.validate_on_submit():
@@ -51,13 +52,22 @@ def new():
 
             mycursor.execute("INSERT INTO users (username,password) VALUES (%s,%s)",(username,hashed_password.decode('utf-8')))
             mydb.commit()
+
+            session['logged_in'] = True
+            session['id'] = mycursor.lastrowid
+            session['username'] = username
+            session.permanent = True
+            app.permanent_session_lifetime = timedelta(minutes=30)
+
             mycursor.close()
             mydb.close()
+
             msg=f"Usuário {username} criado com sucesso"
-            return render_template("new.html",msg=msg,form=form)
+            return redirect(url_for("select_player"))
+
         else:
             msg = "Senhas não são iguais"
-    return render_template("new.html",msg=msg,form=form)
+    return render_template("signIn.html",msg=msg,form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -96,11 +106,12 @@ def login():
 @app.route('/login/logout')
 def logout():
     # Remove session data, this will log the user out
-   session.pop('logged_in', None)
-   session.pop('id', None)
-   session.pop('username', None)
-   # Redirect to login page
-   return redirect(url_for('login'))
+    session.pop('logged_in', None)
+    session.pop('id', None)
+    session.pop('username', None)
+    session.pop("player_id",None)
+    # Redirect to login page
+    return redirect(url_for('login'))
 
 #########################################################################################################
 ####################                LOGIN SESSION ABOVE                  ################################
@@ -109,6 +120,37 @@ def logout():
 @app.route('/',methods=['GET'])
 def main():
     return render_template('teste.html')
+
+@app.route("/player-slot",methods=["GET","POST"])
+def select_player():
+    if not 'logged_in' in session:
+        return redirect(url_for("login"))
+    else:
+        form=PlayerSlotsForm()
+        mydb, mycursor = start_connection()
+        mycursor.execute(f"SELECT * FROM users WHERE id = %s",(session['id'],))
+        query=mycursor.fetchone()
+        mycursor.close()
+        mydb.close()
+        slots={}
+        count=-3
+        while count <0:
+            aux=query[count]
+            if not aux=="+":
+                slot=aux.split(",")
+                slots[slot[1]]=slot[0]
+            else:slots[f'+{count}']="+"
+            count+=1
+        if form.validate_on_submit():
+            selected_slot=request.form.get('selected')
+            if not selected_slot[0] == "+":
+                session["player_id"]=selected_slot
+            else:
+                return redirect(url_for("new_player"))
+            return redirect(url_for('main'))
+        return render_template("player_slots.html",slots=slots,form=form)
+
+
 
 @app.route('/new-player',methods=['GET','POST'])
 def new_player():
@@ -133,9 +175,10 @@ def new_player():
         return render_template('new_player.html',form=form)
     else:return redirect(url_for('login'))
 
-@app.route("/info/<int:id>",methods=['GET'])
+@app.route("/info/<id>",methods=['GET'])
 def player_info(id):
     response = requests.get(f'http://localhost:8080/player/info/{id}')
+    print(response.status_code)
     if response.status_code == 200:
         return render_template('info_player.html',data=response.json())
     else:
@@ -158,7 +201,6 @@ def start_city():
                 "player_id":session['player_id']
             }
             response=requests.post("http://localhost:8080/city/create/",json=data)
-            print(response.status_code)
             if response.status_code == 200:
                 return redirect(url_for('main'))
             else:
@@ -166,6 +208,37 @@ def start_city():
         return render_template("create_city.html",msg=msg,form=form)
     else:return redirect(url_for('login'))
 
+@app.route("/city/barracks/",methods=['GET','POST'])
+def recruit_troops():
+    if not 'logged_in' in session:
+        return redirect(url_for('login'))
+    else:
+        form=RecruitForm()
+        if form.validate_on_submit():
+            player_response = requests.get(f"http://localhost:8080/player/info/{session['player_id']}")
+            response = requests.post("http://localhost:8080/mob/new/",json=player_response.json())
+            return render_template("mob_profile.html",mob=response.json())
+        return render_template("city_barracks.html",form=form)
+
+
+#########################################################################################################
+####################                CITY SESSION ABOVE                  #################################
+#########################################################################################################
+
+@app.route("/player/army/",methods=["GET"])
+def see_army():
+    if not 'logged_in'in session:
+        return redirect(url_for("login"))
+    else:
+        player_response=requests.get(f"http://localhost:8080/player/info/{session['player_id']}")
+        response = requests.get("http://localhost:8080/mob/army/",json=player_response.json())
+        return render_template("player_army.html",army=response.json())
+
+@app.route("/player/mob/profile<mob>/",methods=['GET'])
+def mob_profile(mob):
+
+    mob = requests.get(f"http://localhost:8080/mob/profile/",json={"mob_id":mob,"player_id":session["player_id"]})
+    return render_template("mob_profile.html",obj=mob)
 
 
 if __name__ == "__main__":

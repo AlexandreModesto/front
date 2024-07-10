@@ -21,3 +21,9 @@ class NewPlayer(FlaskForm):
 class StartCityForm(FlaskForm):
     cityName = StringField("Nome da sua cidade",validators=[DataRequired()])
     submit = SubmitField("Enviar")
+
+class RecruitForm(FlaskForm):
+    submit=SubmitField("Recrutar")
+
+class PlayerSlotsForm(FlaskForm):
+    submit = SubmitField("Enviar")

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Saves</title>
+</head>
+<body>
+    <form action="" method="post">
+        {{form.csrf_token}}
+        {% for key, value in slots.items() %}
+        <button type="submit" value="{{key}}" name="selected">{{value}}</button>
+        {% endfor %}
+    </form>
+</body>
+</html>
