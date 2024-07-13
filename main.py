@@ -215,9 +215,9 @@ def recruit_troops():
     else:
         form=RecruitForm()
         if form.validate_on_submit():
-            player_response = requests.get(f"http://localhost:8080/player/info/{session['player_id']}")
-            response = requests.post("http://localhost:8080/mob/new/",json=player_response.json())
-            return render_template("mob_profile.html",mob=response.json())
+            # player_response = requests.get(f"http://localhost:8080/player/info/{session['player_id']}")
+            response = requests.post("http://localhost:8080/mob/new/",json={"player_id":session['player_id']})
+            return redirect(url_for('mob_profile',mob=response.json()))
         return render_template("city_barracks.html",form=form)
 
 
@@ -238,7 +238,7 @@ def see_army():
 def mob_profile(mob):
 
     mob = requests.get(f"http://localhost:8080/mob/profile/",json={"mob_id":mob,"player_id":session["player_id"]})
-    return render_template("mob_profile.html",obj=mob)
+    return render_template("mob_profile.html",obj=mob.json())
 
 
 if __name__ == "__main__":
