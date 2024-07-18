@@ -5,9 +5,15 @@
     <title>Perfil</title>
 </head>
 <body>
-
+<div id="levelUp_panel" style="display:none">
+    <p>nivel: <span id="newLevel"></span></p>
+    <p>Vida: <span id="newHealth"></span></p>
+    <p>Foco: <span id="newFocus"></span></p>
+    <p>Energia Amaldiçoada: <span id="newCursedEnergy"></span></p>
+    <p>Vigor: <span id="newVigor"></span></p>
+</div>
     <p>{{obj.name}}</p>
-    <p>{{obj.level}}</p>
+    <p>{{obj.level}} || <button onclick="levelUp()" id="levelUp_button" style="display:none">Level Up</button></p>
     <p>{{obj.experience}}</p>
     <p>{{obj.family}}</p>
     <p>{{obj.title}}</p>
@@ -15,6 +21,52 @@
     <p>{{obj.focus}}</p>
 <p>{{obj.cursedEnergy}}</p>
 <p>{{obj.vigor}}</p>
+<script>
+    if({{obj.experience}}>={{obj.xpToUp}} && {{obj.xpToUp}} !== 0)
+    {
+        document.getElementById("levelUp_button").style.display="inline";
+    }
 
+    function levelUp(){
+        const url="{{url_for('lvlUp',mob=mob_id)}}";
+        const options={method:"PUT",headers:{"Content-Type":"aplication/json"}};
+        fetch(url,options)
+            .then(response=>{
+                if(!response.ok){
+                    throw new Error("Não encontrado")
+                }
+                return response.json();
+            })
+            .then(data=>{
+                document.getElementById("levelUp_panel").style.display="inline";
+                if(data.level-{{obj.level}}>0){
+                    document.getElementById("newLevel").innerHTML=`${data.level}`+`<span style="color:green"> + ${(data.level-{{obj.level}})}</span>`;
+                }else{
+                    document.getElementById("newLevel").innerHTML=`${data.level}`+` + ${(data.level-{{obj.level}})}`;
+                }
+                if(data.health-{{obj.health}}>0){
+                    document.getElementById("newHealth").innerHTML=`${data.health}`+`<span style="color:green"> + ${(data.health-{{obj.health}})}</span>`;
+                }else{
+                    document.getElementById("newHealth").innerHTML=`${data.health}`+` + ${(data.health-{{obj.health}})}`;
+                }
+                if(data.focus-{{obj.focus}}>0){
+                    document.getElementById("newFocus").innerHTML=`${data.focus}`+`<span style="color:green"> + ${(data.focus-{{obj.focus}})}</span>`;
+                }else{
+                    document.getElementById("newFocus").innerHTML=`${data.focus}`+` + ${(data.focus-{{obj.focus}})}`;
+                }
+                if(data.cursedEnergy-{{obj.cursedEnergy}}>0){
+                    document.getElementById("newCursedEnergy").innerHTML=`${data.cursedEnergy}`+`<span style="color:green"> + ${(data.cursedEnergy-{{obj.cursedEnergy}})}</span>`;
+                }else{
+                    document.getElementById("newCursedEnergy").innerHTML=`${data.cursedEnergy}`+` + ${(data.cursedEnergy-{{obj.cursedEnergy}})}`;
+                }
+                if(data.vigor-{{obj.vigor}}>0){
+                    document.getElementById("newVigor").innerHTML=`${data.vigor}`+`<span style="color:green"> + ${(data.vigor-{{obj.vigor}})}</span>`;
+                }else{
+                    document.getElementById("newVigor").innerHTML=`${data.vigor}`+` + ${(data.vigor-{{obj.vigor}})}`;
+                }
+            });
+        document.getElementById("levelUp_button").style.display="none";
+    }
+</script>
 </body>
 </html>

@@ -27,3 +27,6 @@ class RecruitForm(FlaskForm):
 
 class PlayerSlotsForm(FlaskForm):
     submit = SubmitField("Enviar")
+
+class LevelUpForm(FlaskForm):
+    submit = SubmitField("Enviar")

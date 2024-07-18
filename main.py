@@ -178,7 +178,6 @@ def new_player():
 @app.route("/info/<id>",methods=['GET'])
 def player_info(id):
     response = requests.get(f'http://localhost:8080/player/info/{id}')
-    print(response.status_code)
     if response.status_code == 200:
         return render_template('info_player.html',data=response.json())
     else:
@@ -234,12 +233,18 @@ def see_army():
         response = requests.get("http://localhost:8080/mob/army/",json=player_response.json())
         return render_template("player_army.html",army=response.json())
 
-@app.route("/player/mob/profile<mob>/",methods=['GET'])
+@app.route("/player/mob/profile<mob>/",methods=['GET','PUT'])
 def mob_profile(mob):
-
+    mob_id=mob
     mob = requests.get(f"http://localhost:8080/mob/profile/",json={"mob_id":mob,"player_id":session["player_id"]})
-    return render_template("mob_profile.html",obj=mob.json())
+    form=LevelUpForm()
 
+    return render_template("mob_profile.html",obj=mob.json(),form=form,mob_id=mob_id)
+@app.route("/lvlup/<mob>/",methods=["PUT"])
+@csrf.exempt
+def lvlUp(mob):
+    response=requests.put(f"http://localhost:8080/mob/{mob}/levelup/")
+    return response.json()
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
